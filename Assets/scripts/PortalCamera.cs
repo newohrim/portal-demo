@@ -7,10 +7,7 @@ using RenderPipeline = UnityEngine.Rendering.RenderPipelineManager;
 
 public class PortalCamera : MonoBehaviour
 {
-    //[SerializeField]
-    //private Transform playersCamera;
-    //[SerializeField]
-    //private Transform otherPortal;
+    private static readonly Quaternion halfTurn = Quaternion.Euler(0.0f, 180.0f, 0.0f);
 
     private Camera portalCamera;
     private Camera mainCamera;
@@ -64,17 +61,25 @@ public class PortalCamera : MonoBehaviour
     private void RenderCamera(Portal inPortal, Portal outPortal, ScriptableRenderContext SRC)
     {
         // POS
-        portalCamera.transform.SetParent(outPortal.transform);
-        portalCamera.transform.localPosition = Vector3.zero;
-        portalCamera.transform.rotation = Quaternion.identity;
-        Vector3 fromOtherPortalToPlayerCamera = inPortal.transform.InverseTransformPoint(mainCamera.transform.position);
-        Vector3 relativeOffset = transform.parent.TransformPoint(fromOtherPortalToPlayerCamera);
-        relativeOffset = transform.parent.InverseTransformPoint(relativeOffset);
-        portalCamera.transform.localPosition -= relativeOffset;
+        Transform inTransform = inPortal.transform;
+        Transform outTransform = outPortal.transform;
+
+        Transform cameraTransform = portalCamera.transform;
+        cameraTransform.position = transform.position;
+        cameraTransform.rotation = transform.rotation;
+
+        Vector3 relativePos = inTransform.InverseTransformPoint(cameraTransform.position);
+        relativePos = halfTurn * relativePos;
+        cameraTransform.position = outTransform.TransformPoint(relativePos);
+
+        // Rotate the camera to look through the other portal.
+        Quaternion relativeRot = Quaternion.Inverse(inTransform.rotation) * cameraTransform.rotation;
+        relativeRot = halfTurn * relativeRot;
+        cameraTransform.rotation = outTransform.rotation * relativeRot;
 
         // ROT
-        Vector3 viewDir = portalCamera.transform.parent.position - portalCamera.transform.position;
-        portalCamera.transform.rotation = Quaternion.LookRotation(viewDir);
+        //Vector3 viewDir = portalCamera.transform.parent.position - portalCamera.transform.position;
+        //portalCamera.transform.rotation = Quaternion.LookRotation(viewDir);
 
         // OBLIQUE PLANE
         Plane obliquePlane = new Plane(outPortal.transform.forward, outPortal.transform.position);
@@ -83,7 +88,7 @@ public class PortalCamera : MonoBehaviour
         Matrix4x4 mat = portalCamera.CalculateObliqueMatrix(clipPlaneCameraSpace);
         portalCamera.projectionMatrix = mat;
 
-        portalCamera.transform.SetParent(null);
+        //portalCamera.transform.SetParent(null);
 
         // RENDER TO TEXTURE CALL
         UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
