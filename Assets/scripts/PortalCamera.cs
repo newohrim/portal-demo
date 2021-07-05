@@ -46,11 +46,8 @@ public class PortalCamera : MonoBehaviour
 
     private void UpdateCamera(ScriptableRenderContext SRC, Camera cam)
     {
-        //Debug.Log(cam.gameObject.name);
-        Debug.Log(cam.gameObject.name);
         if (connectedPortals[0] != null && connectedPortals[1] != null) 
         {
-            //Debug.Log("updating");
             portalCamera.targetTexture = renderTextures[0];
             RenderCamera(connectedPortals[0], connectedPortals[1], SRC);
             portalCamera.targetTexture = renderTextures[1];
@@ -60,26 +57,14 @@ public class PortalCamera : MonoBehaviour
 
     private void RenderCamera(Portal inPortal, Portal outPortal, ScriptableRenderContext SRC)
     {
-        // POS
-        Transform inTransform = inPortal.transform;
-        Transform outTransform = outPortal.transform;
-
         Transform cameraTransform = portalCamera.transform;
         cameraTransform.position = transform.position;
         cameraTransform.rotation = transform.rotation;
 
-        Vector3 relativePos = inTransform.InverseTransformPoint(cameraTransform.position);
-        relativePos = halfTurn * relativePos;
-        cameraTransform.position = outTransform.TransformPoint(relativePos);
-
-        // Rotate the camera to look through the other portal.
-        Quaternion relativeRot = Quaternion.Inverse(inTransform.rotation) * cameraTransform.rotation;
-        relativeRot = halfTurn * relativeRot;
-        cameraTransform.rotation = outTransform.rotation * relativeRot;
-
+        // POS
+        cameraTransform.position = inPortal.GetRelativePosition(outPortal.transform, cameraTransform.position);
         // ROT
-        //Vector3 viewDir = portalCamera.transform.parent.position - portalCamera.transform.position;
-        //portalCamera.transform.rotation = Quaternion.LookRotation(viewDir);
+        cameraTransform.rotation = inPortal.GetRelativeRotation(outPortal.transform, cameraTransform.rotation);
 
         // OBLIQUE PLANE
         Plane obliquePlane = new Plane(outPortal.transform.forward, outPortal.transform.position);
@@ -87,8 +72,6 @@ public class PortalCamera : MonoBehaviour
         Vector4 clipPlaneCameraSpace = Matrix4x4.Transpose(Matrix4x4.Inverse(portalCamera.worldToCameraMatrix)) * clipPlaneWorldSpace;
         Matrix4x4 mat = portalCamera.CalculateObliqueMatrix(clipPlaneCameraSpace);
         portalCamera.projectionMatrix = mat;
-
-        //portalCamera.transform.SetParent(null);
 
         // RENDER TO TEXTURE CALL
         UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);

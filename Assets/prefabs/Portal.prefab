@@ -91,7 +91,7 @@ MeshCollider:
   m_GameObject: {fileID: 2920705307777023193}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 4
   m_Convex: 0
   m_CookingOptions: 30
@@ -114,7 +114,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4441079606346820559
 Transform:
   m_ObjectHideFlags: 0
@@ -201,6 +201,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3710734405289982724}
   - component: {fileID: 2182730248256668866}
+  - component: {fileID: 1372354972983404627}
   m_Layer: 0
   m_Name: Portal
   m_TagString: Untagged
@@ -237,3 +238,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <PortalMesh>k__BackingField: {fileID: 2920705307777023195}
+--- !u!65 &1372354972983404627
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6258875687864910792}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 1.2, y: 2.25, z: 0.1}
+  m_Center: {x: 0, y: 0, z: 0}
