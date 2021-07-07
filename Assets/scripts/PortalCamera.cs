@@ -9,6 +9,9 @@ public class PortalCamera : MonoBehaviour
 {
     private static readonly Quaternion halfTurn = Quaternion.Euler(0.0f, 180.0f, 0.0f);
 
+    [SerializeField]
+    private int recursiveIterations = 7;
+
     private Camera portalCamera;
     private Camera mainCamera;
     private Portal[] connectedPortals;
@@ -48,23 +51,38 @@ public class PortalCamera : MonoBehaviour
     {
         if (connectedPortals[0] != null && connectedPortals[1] != null) 
         {
-            portalCamera.targetTexture = renderTextures[0];
-            RenderCamera(connectedPortals[0], connectedPortals[1], SRC);
-            portalCamera.targetTexture = renderTextures[1];
-            RenderCamera(connectedPortals[1], connectedPortals[0], SRC);
+            if (connectedPortals[0].IsVisible)
+            {
+                portalCamera.targetTexture = renderTextures[0];
+                for (int i = recursiveIterations - 1; i >= 0; --i) 
+                {
+                    RenderCamera(connectedPortals[0], connectedPortals[1], i, SRC);
+                }
+            }
+            if (connectedPortals[1].IsVisible) 
+            {
+                portalCamera.targetTexture = renderTextures[1];
+                for (int i = recursiveIterations - 1; i >= 0; --i) 
+                {
+                    RenderCamera(connectedPortals[1], connectedPortals[0], i, SRC);
+                }
+            }
         }
     }
 
-    private void RenderCamera(Portal inPortal, Portal outPortal, ScriptableRenderContext SRC)
+    private void RenderCamera(Portal inPortal, Portal outPortal, int iteration, ScriptableRenderContext SRC)
     {
         Transform cameraTransform = portalCamera.transform;
         cameraTransform.position = transform.position;
         cameraTransform.rotation = transform.rotation;
 
-        // POS
-        cameraTransform.position = inPortal.GetRelativePosition(outPortal.transform, cameraTransform.position);
-        // ROT
-        cameraTransform.rotation = inPortal.GetRelativeRotation(outPortal.transform, cameraTransform.rotation);
+        for (int i = 0; i <= iteration; ++i) 
+        {
+            // POS
+            cameraTransform.position = inPortal.GetRelativePosition(outPortal.transform, cameraTransform.position);
+            // ROT
+            cameraTransform.rotation = inPortal.GetRelativeRotation(outPortal.transform, cameraTransform.rotation);
+        }
 
         // OBLIQUE PLANE
         Plane obliquePlane = new Plane(outPortal.transform.forward, outPortal.transform.position);

@@ -82,8 +82,8 @@ public class PortableObject : MonoBehaviour, IPortable
         transform.rotation = initRot;
     }
 
-    private void OnCollisionEnter(Collision col)
-    {
-        Debug.Log(col.gameObject.name);
-    }
+    //private void OnCollisionEnter(Collision col)
+    //{
+    //    Debug.Log(col.gameObject.name);
+    //}
 }

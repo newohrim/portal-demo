@@ -4,9 +4,25 @@ using UnityEngine;
 
 public class Portal : MonoBehaviour
 {
+    private static readonly Vector3[] cornerPoints = 
+    {
+        new Vector3(0.646f, 1.176f, 0.01f),
+        new Vector3(0.646f, -1.176f, 0.01f),
+        new Vector3(-0.646f, -1.176f, 0.01f),
+        new Vector3(-0.646f, 1.176f, 0.01f)
+    };
+    private static readonly Vector3[] borderPoints = 
+    {
+        new Vector3(0.0f, 1.176f, 0.01f),
+        new Vector3(-0.646f, 0.0f, 0.01f),
+        new Vector3(0.0f, -1.176f, 0.01f),
+        new Vector3(0.646f, 0.0f, 0.01f)
+    };
+
     private static readonly Quaternion halfTurn = Quaternion.Euler(0.0f, 180.0f, 0.0f);
 
     public bool IsPlaced { get; private set; } = false;
+    public bool IsVisible { get => PortalMesh.isVisible; }
 
     [field: SerializeField]
     public Renderer PortalMesh { get; set; }
@@ -91,5 +107,47 @@ public class Portal : MonoBehaviour
                 portalable.ExitPortal(wallCollider);
             }
         }
+    }
+
+    public static bool OverlapCheck(Vector3 pos, Quaternion rot, LayerMask overlapMask)
+    {
+        Transform testTransform = new GameObject().transform;
+        testTransform.position = pos;
+        testTransform.rotation = rot;
+
+        Vector3[] directions = 
+        {
+            Vector3.right,
+            Vector3.left,
+            Vector3.down,
+            Vector3.right
+        };
+
+        for (int i = 0; i < borderPoints.Length; ++i) 
+        {
+            //testTransform.position = ;
+            if (Physics.CheckSphere(borderPoints[i], 0.05f, overlapMask)) 
+            {
+                break;
+            }
+        }
+
+        Vector3[] points = 
+        {
+            testTransform.position + testTransform.TransformVector(cornerPoints[0]),
+            testTransform.position + testTransform.TransformVector(cornerPoints[1]),
+            testTransform.position + testTransform.TransformVector(cornerPoints[2]),
+            testTransform.position + testTransform.TransformVector(cornerPoints[3]),
+        };
+
+        //Collider[] intersec = Physics.OverlapBox(testTransform,);
+
+        bool isOverlapping = true;
+        for (int i = 0; i < cornerPoints.Length - 1; ++i) 
+        {
+            isOverlapping &= Physics.Linecast(points[i], points[i + 1], overlapMask);
+        }
+        isOverlapping &= Physics.Linecast(points[cornerPoints.Length - 1], points[0], overlapMask);
+        return isOverlapping;
     }
 }
