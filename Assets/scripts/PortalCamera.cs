@@ -17,6 +17,8 @@ public class PortalCamera : MonoBehaviour
     private Portal[] connectedPortals;
     private RenderTexture[] renderTextures;
 
+    private int temp = 1;
+
     private void Awake()
     {
         connectedPortals = new Portal[2];
@@ -25,12 +27,20 @@ public class PortalCamera : MonoBehaviour
             new RenderTexture(Screen.width, Screen.height, 24, RenderTextureFormat.ARGB32),
             new RenderTexture(Screen.width, Screen.height, 24, RenderTextureFormat.ARGB32)
         };
-        //portalCamera = GetComponent<Camera>();
+        //portalCamera = GetComponent<Camera>();    
         mainCamera = GetComponent<Camera>();
     }
 
     private void LateUpdate()
     {
+        if ((Time.frameCount / 600) % 2 == 0) 
+        {
+            temp = 1;
+        }
+        else 
+        {
+            temp = -1;
+        }
         //UpdateRelativePosition();
         //GenerateObliqueMatrix();
     }
@@ -49,6 +59,8 @@ public class PortalCamera : MonoBehaviour
 
     private void UpdateCamera(ScriptableRenderContext SRC, Camera cam)
     {
+        if (cam != mainCamera)
+            return;
         if (connectedPortals[0] != null && connectedPortals[1] != null) 
         {
             if (connectedPortals[0].IsVisible)
@@ -84,7 +96,7 @@ public class PortalCamera : MonoBehaviour
             cameraTransform.rotation = inPortal.GetRelativeRotation(outPortal.transform, cameraTransform.rotation);
         }
 
-        // OBLIQUE PLANE
+        // OBLIQUE PLANE (reverse plane or far plane swpap bug)
         Plane obliquePlane = new Plane(outPortal.transform.forward, outPortal.transform.position);
         Vector4 clipPlaneWorldSpace = new Vector4(obliquePlane.normal.x, obliquePlane.normal.y, obliquePlane.normal.z, obliquePlane.distance);
         Vector4 clipPlaneCameraSpace = Matrix4x4.Transpose(Matrix4x4.Inverse(portalCamera.worldToCameraMatrix)) * clipPlaneWorldSpace;
@@ -93,6 +105,7 @@ public class PortalCamera : MonoBehaviour
 
         // RENDER TO TEXTURE CALL
         UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
+        portalCamera.ResetProjectionMatrix();
     }
 
     private void UpdateRelativePosition()

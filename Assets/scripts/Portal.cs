@@ -79,10 +79,12 @@ public class Portal : MonoBehaviour
 
     private void OnTriggerEnter(Collider col)
     {
+        // if the collider is portalable and this portal is outPortal, then swap the reference?
         IPortalable portalable = col.GetComponent<IPortalable>();
-        if (portalable != null) 
+        if (portalable != null && otherPortal != null) 
         {
             currentInstances.Add(portalable);
+            IgnoreCollisionWith(col, true);
             if (holders != null && !holders.activeSelf)
                 holders.SetActive(true);
             if (!portalable.HasClone()) 
@@ -102,11 +104,16 @@ public class Portal : MonoBehaviour
             {
                 holders.SetActive(false);
             }
-            if (portalable.HasClone()) 
+            if (portalable.HasClone() && portalable.IsInPortal(this)) 
             {
                 portalable.ExitPortal(wallCollider);
             }
         }
+    }
+
+    public void IgnoreCollisionWith(Collider objCollider, bool ignore)
+    {
+        Physics.IgnoreCollision(objCollider, wallCollider, ignore);
     }
 
     public static bool OverlapCheck(Vector3 pos, Quaternion rot, LayerMask overlapMask)

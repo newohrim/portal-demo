@@ -71,7 +71,9 @@ public class PortalableObject : MonoBehaviour, IPortalable
 
     public GameObject Clone(Portal inPortal, Portal outPortal, Collider wallCollider)
     {
-        Physics.IgnoreCollision(collider, wallCollider, true);
+        Debug.Log("CLONED");
+        //Physics.IgnoreCollision(collider, wallCollider, true);
+        inPortal.IgnoreCollisionWith(collider, true);
 
         this.inPortal = inPortal;
         this.outPortal = outPortal;
@@ -97,23 +99,34 @@ public class PortalableObject : MonoBehaviour, IPortalable
 
     public void ExitPortal(Collider wallCollider)
     {
-        Physics.IgnoreCollision(collider, wallCollider, false);
+        //Physics.IgnoreCollision(collider, wallCollider, false);
+        inPortal.IgnoreCollisionWith(collider, false);
 
         inPortal = null;
         outPortal = null;
         //GameObject.Destroy(spawnedClone);
         GameObject.Destroy(clone);
+        Debug.Log("destroyed clone");
         clone = null;
         CloneSpawned = false;
     }
 
+    public bool IsInPortal(Portal portal)
+    {
+        return portal == inPortal;
+    }
+
     public void WarpToPortal()
     {
-        rootTransform.position = clone.transform.position;
-        rootTransform.rotation = clone.transform.rotation;
+        Debug.Log("WARPED");
+        //rootTransform.position = clone.transform.position;
+        //rootTransform.rotation = clone.transform.rotation;
+        rootTransform.position = inPortal.GetRelativePosition(outPortal.transform, rootTransform.position);
+        rootTransform.rotation = inPortal.GetRelativeRotation(outPortal.transform, rootTransform.rotation);
         Vector3 relativeVelocity = inPortal.transform.InverseTransformDirection(rigidbody.velocity);
         relativeVelocity = Quaternion.Euler(0.0f, 180.0f, 0.0f) * relativeVelocity;
         rigidbody.velocity = outPortal.transform.TransformDirection(relativeVelocity);
+        inPortal.IgnoreCollisionWith(collider, false);
         Portal tmp = inPortal;
         inPortal = outPortal;
         outPortal = tmp;

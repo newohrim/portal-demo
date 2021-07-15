@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
@@ -9,12 +10,17 @@ public class Player : MonoBehaviour
     private const float MAX_CAMERA_ROTATION_Y = 85.0f;
     private const float MIN_CAMERA_ROTATION_Y = -85.0f;
     private const float MAX_RAY_DISTANCE = 100.0f;
+    private const float MIN_PORTAL_DISTANCE = 1.0f;
 
     [Header("Movement")]
+    [SerializeField]
+    private InputSystem userInput;
     [SerializeField]
     private float playerSpeed = 5.0f;
     [SerializeField]
     private float pushForce = 5.0f;
+    [SerializeField]
+    private float jumpForce = 100.0f;
 
     [Header("Portals")]
     [SerializeField]
@@ -39,9 +45,24 @@ public class Player : MonoBehaviour
     private IPortable portableObject;
     private bool portableObjectLifted = false;
     private PlacementObject placementObject;
+    private Vector3 inputVector;
+    private bool readyToLiftPortable = false;
+    private RaycastHit currentHit;
+    private bool hitHappened = false;
 
-    private void Start()
+    private bool CanJump
     {
+        get => Mathf.Abs(rig.velocity.y) < 0.1f;
+    }
+
+    private void Awake()
+    {
+        userInput = new InputSystem();
+        userInput.Player.PushObject.performed += context => PushObject();
+        userInput.Player.TakePortable.canceled += context => TakePortable();
+        userInput.Player.SpawnFirstPortal.performed += context => SpawnFirstPortal();
+        userInput.Player.SpawnSecondPortal.performed += context => SpawnSecondPortal();
+        userInput.Player.Jump.performed += context => Jump();
         rig = GetComponent<Rigidbody>();
         portals = new Portal[2] 
         {
@@ -57,45 +78,50 @@ public class Player : MonoBehaviour
     private void Update()
     {
         RayProceed();
-        if (Input.GetKeyUp(KeyCode.E) && isPortableState && !portableObjectLifted) 
-        {
-            isPortableState = false;
-            portableObject.EndPortable();
-            portableObject = null;
-        }
-        else if (Input.GetKeyUp(KeyCode.Mouse0) && isPortableState) 
-        {
-            isPortableState = false;
-            portableObject.EndPortable();
-            portableObject.PushObject(pushForce);
-            portableObject = null;
-        }
-        portableObjectLifted = false;
         CameraProceed();
     }
 
     private void FixedUpdate()
     {
+        UpdateInputVector();
         Move();
     }
 
-    private void LateUpdate()
+    private void OnEnable()
     {
-        //CameraProceed();
+        userInput.Enable();
+    }
+
+    private void OnDisable() 
+    {
+        userInput.Disable();
+    }
+
+    private void UpdateInputVector()
+    {
+        float horizontal = userInput.Player.MoveX.ReadValue<float>();
+        float vertical = userInput.Player.MoveZ.ReadValue<float>();
+        inputVector = new Vector3(
+            horizontal, 
+            0, 
+            vertical);
     }
 
     private void Move()
     {
-        Matrix4x4 mat4 = Matrix4x4.identity;
+        //Matrix4x4 mat4 = Matrix4x4.identity;
         Quaternion forwardDirection = mainCamera.transform.rotation;
         forwardDirection = Quaternion.Euler(0.0f, forwardDirection.eulerAngles.y, 0.0f);
-        mat4.SetTRS(new Vector3(1.0f, 1.0f, 1.0f), forwardDirection, new Vector3(1.0f, 1.0f, 1.0f));
-        Vector3 inputVector = new Vector3(
-            Input.GetAxis(HORIZONTAL_AXIS_NAME), 
-            0, 
-            Input.GetAxis(VERTICAL_AXIS_NAME));
-        inputVector = mat4.MultiplyVector(inputVector);
+        //mat4.SetTRS(new Vector3(1.0f, 1.0f, 1.0f), forwardDirection, new Vector3(1.0f, 1.0f, 1.0f));
+        //Vector3 inputVector = new Vector3(
+        //    Input.GetAxis(HORIZONTAL_AXIS_NAME), 
+        //    0, 
+        //    Input.GetAxis(VERTICAL_AXIS_NAME));
+        //inputVector = mat4.MultiplyVector(inputVector.normalized);
+        inputVector = forwardDirection * inputVector;
         rig.MovePosition(transform.position + inputVector * playerSpeed * Time.fixedDeltaTime);
+        //rig.AddForce(inputVector * playerSpeed, ForceMode.VelocityChange);
+        //rig.velocity = new Vector3(inputVector.x * playerSpeed, rig.velocity.y, inputVector.z * playerSpeed);
     }
 
     private void CameraProceed()
@@ -110,8 +136,8 @@ public class Player : MonoBehaviour
         {
             cameraRotation.x -= 360.0f;
         }
-        cameraRotation.x += Input.GetAxis("Mouse Y") * mouseSensetivityX;
-        cameraRotation.y += Input.GetAxis("Mouse X") * mouseSensetivityY;
+        cameraRotation.x += userInput.Player.CameraVertical.ReadValue<float>() * mouseSensetivityX * Time.deltaTime;
+        cameraRotation.y += userInput.Player.CameraHorizontal.ReadValue<float>() * mouseSensetivityY * Time.deltaTime;
         transform.rotation = Quaternion.Euler(0, cameraRotation.y, 0);
         mainCamera.transform.rotation = Quaternion.Euler(
             Mathf.Clamp(-cameraRotation.x, MIN_CAMERA_ROTATION_Y, MAX_CAMERA_ROTATION_Y), 
@@ -121,36 +147,37 @@ public class Player : MonoBehaviour
 
     private void RayProceed()
     {
-        RaycastHit hit;
-        if (Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, MAX_RAY_DISTANCE))
+        if (RaycastFromCamera())
         {
-            if (!isPortableState && hit.transform.gameObject.CompareTag("LevelMesh")) 
+            hitHappened = true;
+            if (!isPortableState && currentHit.transform.gameObject.CompareTag("LevelMesh") && currentHit.distance >= MIN_PORTAL_DISTANCE) 
             {
-                ProceedWallHit(hit);
+                ProceedWallHit(currentHit);
             }
             else 
             {
-                if (placementObject != null) 
-                {
-                    Destroy(placementObject.gameObject);
-                    placementObject = null;
-                }
-                IPortable portable = hit.collider.GetComponent<IPortable>();
-                if (portable != null) 
-                {
-                    if (Input.GetKeyUp(KeyCode.E))
-                    {
-                        if (!isPortableState) 
-                        {
-                            isPortableState = true;
-                            portableObjectLifted = true;
-                            portableObject = portable;
-                            portable.GoPortable(mainCamera.transform);
-                        }
-                    }
-                }
+                DestroyPlacementObject();
             }
         }
+        else 
+        {
+            DestroyPlacementObject();
+            hitHappened = false;
+        }
+    }
+
+    private void DestroyPlacementObject()
+    {
+        if (placementObject != null) 
+        {
+            Destroy(placementObject.gameObject);
+            placementObject = null;
+        }
+    }
+
+    private bool RaycastFromCamera()
+    {
+        return Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out currentHit, MAX_RAY_DISTANCE);
     }
 
     private void ProceedWallHit(RaycastHit hit)
@@ -158,7 +185,6 @@ public class Player : MonoBehaviour
         Vector3 pos;
         Quaternion rot;
         GetSpawnPosition(hit.point, hit.normal, 0.05f, out pos, out rot);
-        Debug.Log("wall " + (placementObject == null).ToString());
         if (placementObject == null) 
         {
             placementObject = Instantiate<PlacementObject>(placementPrefab, pos, rot);
@@ -168,30 +194,22 @@ public class Player : MonoBehaviour
             placementObject.transform.position = pos;
             placementObject.transform.rotation = rot;
         }
-        if (Input.GetKeyUp(KeyCode.Mouse0)) 
-        {
-            SpawnPortalProceed(hit, 0);
-        }
-        else if (Input.GetKeyUp(KeyCode.Mouse1)) 
-        {
-            SpawnPortalProceed(hit, 1);
-        }
     }
 
     private void SpawnPortalProceed(RaycastHit hit, int portalId)
     {
-        if (placementObject.PlacementPossible) 
+        if (!isPortableState && placementObject != null && placementObject.PlacementPossible) 
+        {
+            if (!portals[portalId].IsPlaced) 
             {
-                if (!portals[portalId].IsPlaced) 
-                {
-                    SpawnPortal(hit.point, hit.normal, hit.collider, out portals[portalId]);
-                    CheckConnectionCondition();
-                }
-                else
-                {
-                    MovePortal(hit.point, hit.normal, hit.collider, portals[portalId]);
-                }
+                SpawnPortal(hit.point, hit.normal, hit.collider, out portals[portalId]);
+                CheckConnectionCondition();
             }
+            else
+            {
+                MovePortal(hit.point, hit.normal, hit.collider, portals[portalId]);
+            }
+        }
     }
 
     private void SpawnPortal(Vector3 hitPoint, Vector3 normal, Collider wallCollider, out Portal spawnedPortal)
@@ -209,6 +227,7 @@ public class Player : MonoBehaviour
         Vector3 offsetToPlayer = (transform.position - hitPoint).normalized * 0.01f;
         movingPortal.transform.position = hitPoint + offsetToPlayer;
         movingPortal.transform.rotation = portalRotation;
+        movingPortal.SetWallCollider(wallCollider);
     }
 
     private void GetSpawnPosition(Vector3 hitPoint, Vector3 normal, float offset, out Vector3 pos, out Quaternion rot)
@@ -229,5 +248,71 @@ public class Player : MonoBehaviour
     public Camera GetPlayersCamera() 
     {
         return mainCamera;
+    }
+
+    private void PushObject()
+    {
+        if (isPortableState) 
+        {
+            portableObject.EndPortable();
+            portableObject.PushObject(pushForce);
+            portableObject = null;
+            isPortableState = false;
+        }
+    }
+
+    private void TakePortable()
+    {
+        if (isPortableState) 
+        {
+            portableObject.EndPortable();
+            isPortableState = false;
+            portableObject = null;
+        }
+        else 
+        {
+            if (!hitHappened) 
+            {
+                // proceed raycast
+                if (!RaycastFromCamera()) 
+                {
+                    return;
+                }
+            }
+            IPortable portable = currentHit.collider.GetComponent<IPortable>();
+            if (portable != null) 
+            {
+                if (!isPortableState) 
+                {
+                    isPortableState = true;
+                    portableObject = portable;
+                    portable.GoPortable(mainCamera.transform);
+                }
+            }
+        }
+    }
+
+    private void SpawnFirstPortal()
+    {
+        if (hitHappened && currentHit.collider.CompareTag("LevelMesh")) 
+        {
+            SpawnPortalProceed(currentHit, 0);
+        }
+    }
+
+    private void SpawnSecondPortal()
+    {
+        if (hitHappened && currentHit.collider.CompareTag("LevelMesh")) 
+        {
+            SpawnPortalProceed(currentHit, 1);
+        }
+    }
+
+    private void Jump()
+    {
+        if (CanJump) 
+        {
+            rig.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
     }
 }

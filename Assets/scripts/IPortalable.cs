@@ -8,4 +8,5 @@ public interface IPortalable
     GameObject Clone(Portal inPortal, Portal outPortal, Collider wallCollider);
     void ExitPortal(Collider wallCollider);
     void WarpToPortal();
+    bool IsInPortal(Portal portal);
 }

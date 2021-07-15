@@ -61,7 +61,7 @@ Camera:
   field of view: 60
   orthographic: 0
   orthographic size: 5
-  m_Depth: -1
+  m_Depth: 1
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -178,13 +178,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e985e01f3aa76a40872a26e6c29b792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerSpeed: 5
-  pushForce: 100
-  portalPrefab: {fileID: 2182730248256668866, guid: 4f777fdb10d8bdc42aa79cfd1c762aea, type: 3}
+  playerSpeed: 10
+  pushForce: 200
+  portalPrefab: {fileID: 2812022513219453994, guid: d0fd19e8ebe2e3a40aed597f5598d4b6, type: 3}
   portalCameraPrefab: {fileID: 3867751653080671294, guid: 67aa4412c77673846926592caf139ed9, type: 3}
+  placementPrefab: {fileID: 5904564102600634464, guid: d3581bd0682eca7458c13f49c68bf9e8, type: 3}
   mainCamera: {fileID: 4029083768272889851}
-  mouseSensetivityX: 1
-  mouseSensetivityY: 1
+  mouseSensetivityX: 1.5
+  mouseSensetivityY: 1.5
 --- !u!1 &4029083769897351901
 GameObject:
   m_ObjectHideFlags: 0
