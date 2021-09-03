@@ -9,7 +9,7 @@ public class PortalCamera : MonoBehaviour
 {
     private static readonly Quaternion halfTurn = Quaternion.Euler(0.0f, 180.0f, 0.0f);
 
-    [SerializeField]
+    //[SerializeField]
     private int recursiveIterations = 7;
 
     private Camera portalCamera;
@@ -17,10 +17,9 @@ public class PortalCamera : MonoBehaviour
     private Portal[] connectedPortals;
     private RenderTexture[] renderTextures;
 
-    private int temp = 1;
-
     private void Awake()
     {
+        recursiveIterations = Player.rec_iter;
         connectedPortals = new Portal[2];
         renderTextures = new RenderTexture[2] 
         {
@@ -29,20 +28,6 @@ public class PortalCamera : MonoBehaviour
         };
         //portalCamera = GetComponent<Camera>();    
         mainCamera = GetComponent<Camera>();
-    }
-
-    private void LateUpdate()
-    {
-        if ((Time.frameCount / 600) % 2 == 0) 
-        {
-            temp = 1;
-        }
-        else 
-        {
-            temp = -1;
-        }
-        //UpdateRelativePosition();
-        //GenerateObliqueMatrix();
     }
 
     private void OnEnable()
@@ -106,45 +91,6 @@ public class PortalCamera : MonoBehaviour
         // RENDER TO TEXTURE CALL
         UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
         portalCamera.ResetProjectionMatrix();
-    }
-
-    private void UpdateRelativePosition()
-    {
-        // POS
-        /*
-        transform.localPosition = Vector3.zero;
-        transform.rotation = Quaternion.identity;
-        //Vector3 fromOtherPortalToPlayerCamera = playersCamera.position - otherPortal.position;
-        Vector3 fromOtherPortalToPlayerCamera = otherPortal.InverseTransformPoint(playersCamera.position);
-        Debug.Log(transform.parent.gameObject.name);
-        Debug.Log(fromOtherPortalToPlayerCamera);
-        //fromOtherPortalToPlayerCamera = transform.InverseTransformVector(fromOtherPortalToPlayerCamera);
-        //Debug.Log(fromOtherPortalToPlayerCamera);
-        Vector3 relativeOffset = transform.parent.TransformPoint(fromOtherPortalToPlayerCamera);
-        relativeOffset = transform.parent.InverseTransformPoint(relativeOffset);
-        Debug.Log(relativeOffset);
-        Debug.Log(transform.position);
-        transform.localPosition -= relativeOffset;
-        //Debug.Break();
-
-        // ROT
-        Vector3 viewDir = transform.parent.position - transform.position;
-        //Debug.Log(transform.parent.gameObject.name + " " + viewDir);
-        transform.rotation = Quaternion.LookRotation(viewDir);
-        //transform.rotation.SetLookRotation(-transform.localPosition, Vector3.up);
-        //Debug.Log(transform.localPosition);
-        //transform.LookAt(transform.parent);*/
-    }
-
-    private void GenerateObliqueMatrix()
-    {
-        /*
-        Plane obliquePlane = new Plane(otherPortal.forward, otherPortal.position);
-        Vector4 clipPlaneWorldSpace = new Vector4(obliquePlane.normal.x, obliquePlane.normal.y, obliquePlane.normal.z, obliquePlane.distance);
-        Vector4 clipPlaneCameraSpace = Matrix4x4.Transpose(Matrix4x4.Inverse(portalCamera.worldToCameraMatrix)) * clipPlaneWorldSpace;
-        Matrix4x4 mat = mainCamera.CalculateObliqueMatrix(clipPlaneCameraSpace);
-        portalCamera.projectionMatrix = mat;
-        */
     }
 
     public void SetPortals(Portal p1, Portal p2)

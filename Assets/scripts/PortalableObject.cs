@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PortalableObject : MonoBehaviour, IPortalable
 {
+    private readonly static Vector3 spawnPoint = new Vector3(5.0f, 10.0f, -5.0f);
+
     [SerializeField]
     private Transform rootTransform;
     [SerializeField]
@@ -12,6 +14,12 @@ public class PortalableObject : MonoBehaviour, IPortalable
     private MeshRenderer meshObject;
     [SerializeField]
     private new Collider collider;
+    [SerializeField]
+    private float predictVelocityLimitter = 10.0f;
+    [SerializeField]
+    private float maxCappableSpeed = 100.0f;
+    [SerializeField]
+    private LayerMask portalLayer;
     public bool CloneSpawned { get; private set; } = false;
     private GameObject clone;
     private GameObject spawnedClone;
@@ -45,6 +53,16 @@ public class PortalableObject : MonoBehaviour, IPortalable
         }
     }
 
+    private void FixedUpdate()
+    {
+        if (transform.position.y < -10.0f) 
+        {
+            transform.position = spawnPoint;
+        }
+        ClampVelocity();
+        PredictCollision();
+    }
+
     private void LateUpdate()
     {
         UpdateCloneTransform();
@@ -66,6 +84,29 @@ public class PortalableObject : MonoBehaviour, IPortalable
             clone.transform.position = inPortal.GetRelativePosition(outPortal.transform, rootTransform.position);
             clone.transform.rotation = inPortal.GetRelativeRotation(outPortal.transform, rootTransform.rotation);
             clone.transform.localScale = rootTransform.localScale;
+        }
+    }
+
+    private void PredictCollision()
+    {
+        RaycastHit hitInfo;
+        if (rigidbody.velocity.magnitude >= predictVelocityLimitter && 
+            Physics.Raycast(rootTransform.position, rigidbody.velocity, out hitInfo, 20.0f, portalLayer, QueryTriggerInteraction.Collide))
+        {
+            Portal hitPortal = hitInfo.collider.GetComponent<Portal>();
+            if (hitPortal != null) 
+            {
+                Debug.Log("PREDICTION HAPPENED");
+                hitPortal.IgnoreCollisionWith(collider, true);
+            }
+        }
+    }
+
+    private void ClampVelocity()
+    {
+        if (rigidbody.velocity.magnitude > maxCappableSpeed) 
+        {
+            rigidbody.velocity = Vector3.ClampMagnitude(rigidbody.velocity, maxCappableSpeed);
         }
     }
 
@@ -116,6 +157,11 @@ public class PortalableObject : MonoBehaviour, IPortalable
         return portal == inPortal;
     }
 
+    public bool IsBehindPortal(Portal portal)
+    {
+        return portal.transform.InverseTransformPoint(transform.position).z < 0.0f;
+    }
+
     public void WarpToPortal()
     {
         Debug.Log("WARPED");
@@ -127,6 +173,11 @@ public class PortalableObject : MonoBehaviour, IPortalable
         relativeVelocity = Quaternion.Euler(0.0f, 180.0f, 0.0f) * relativeVelocity;
         rigidbody.velocity = outPortal.transform.TransformDirection(relativeVelocity);
         inPortal.IgnoreCollisionWith(collider, false);
+        SwapPortals(); // swaps portal references
+    }
+
+    public void SwapPortals()
+    {
         Portal tmp = inPortal;
         inPortal = outPortal;
         outPortal = tmp;

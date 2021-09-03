@@ -4,21 +4,6 @@ using UnityEngine;
 
 public class Portal : MonoBehaviour
 {
-    private static readonly Vector3[] cornerPoints = 
-    {
-        new Vector3(0.646f, 1.176f, 0.01f),
-        new Vector3(0.646f, -1.176f, 0.01f),
-        new Vector3(-0.646f, -1.176f, 0.01f),
-        new Vector3(-0.646f, 1.176f, 0.01f)
-    };
-    private static readonly Vector3[] borderPoints = 
-    {
-        new Vector3(0.0f, 1.176f, 0.01f),
-        new Vector3(-0.646f, 0.0f, 0.01f),
-        new Vector3(0.0f, -1.176f, 0.01f),
-        new Vector3(0.646f, 0.0f, 0.01f)
-    };
-
     private static readonly Quaternion halfTurn = Quaternion.Euler(0.0f, 180.0f, 0.0f);
 
     public bool IsPlaced { get; private set; } = false;
@@ -79,12 +64,17 @@ public class Portal : MonoBehaviour
 
     private void OnTriggerEnter(Collider col)
     {
-        // if the collider is portalable and this portal is outPortal, then swap the reference?
         IPortalable portalable = col.GetComponent<IPortalable>();
         if (portalable != null && otherPortal != null) 
         {
+            Debug.Log("portal enter " + gameObject.name);
             currentInstances.Add(portalable);
             IgnoreCollisionWith(col, true);
+            if (portalable.HasClone() && !portalable.IsInPortal(this))
+            {
+                portalable.SwapPortals();
+                Debug.Log("swap references");
+            }
             if (holders != null && !holders.activeSelf)
                 holders.SetActive(true);
             if (!portalable.HasClone()) 
@@ -99,6 +89,15 @@ public class Portal : MonoBehaviour
         IPortalable portalable = col.GetComponent<IPortalable>();
         if (portalable != null) 
         {
+            Debug.Log("portal exit " + gameObject.name);
+            if (portalable.IsInPortal(this)) 
+            {
+                if (portalable.IsBehindPortal(this)) 
+                {
+                    portalable.WarpToPortal();
+                    return;
+                }
+            }
             currentInstances.Remove(portalable);
             if (currentInstances.Count == 0 && holders != null) 
             {
@@ -114,47 +113,5 @@ public class Portal : MonoBehaviour
     public void IgnoreCollisionWith(Collider objCollider, bool ignore)
     {
         Physics.IgnoreCollision(objCollider, wallCollider, ignore);
-    }
-
-    public static bool OverlapCheck(Vector3 pos, Quaternion rot, LayerMask overlapMask)
-    {
-        Transform testTransform = new GameObject().transform;
-        testTransform.position = pos;
-        testTransform.rotation = rot;
-
-        Vector3[] directions = 
-        {
-            Vector3.right,
-            Vector3.left,
-            Vector3.down,
-            Vector3.right
-        };
-
-        for (int i = 0; i < borderPoints.Length; ++i) 
-        {
-            //testTransform.position = ;
-            if (Physics.CheckSphere(borderPoints[i], 0.05f, overlapMask)) 
-            {
-                break;
-            }
-        }
-
-        Vector3[] points = 
-        {
-            testTransform.position + testTransform.TransformVector(cornerPoints[0]),
-            testTransform.position + testTransform.TransformVector(cornerPoints[1]),
-            testTransform.position + testTransform.TransformVector(cornerPoints[2]),
-            testTransform.position + testTransform.TransformVector(cornerPoints[3]),
-        };
-
-        //Collider[] intersec = Physics.OverlapBox(testTransform,);
-
-        bool isOverlapping = true;
-        for (int i = 0; i < cornerPoints.Length - 1; ++i) 
-        {
-            isOverlapping &= Physics.Linecast(points[i], points[i + 1], overlapMask);
-        }
-        isOverlapping &= Physics.Linecast(points[cornerPoints.Length - 1], points[0], overlapMask);
-        return isOverlapping;
     }
 }

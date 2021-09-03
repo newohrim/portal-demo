@@ -1,10 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
+    // temp for config
+    public static int rec_iter = 7;
+
     private const string HORIZONTAL_AXIS_NAME = "Horizontal";
     private const string VERTICAL_AXIS_NAME = "Vertical";
     private const float MAX_CAMERA_ROTATION_Y = 85.0f;
@@ -55,14 +57,21 @@ public class Player : MonoBehaviour
         get => Mathf.Abs(rig.velocity.y) < 0.1f;
     }
 
+    private void Start ()
+    {
+        ReadConfig();
+    }
+
     private void Awake()
     {
+        // USER INPUT
         userInput = new InputSystem();
         userInput.Player.PushObject.performed += context => PushObject();
         userInput.Player.TakePortable.canceled += context => TakePortable();
-        userInput.Player.SpawnFirstPortal.performed += context => SpawnFirstPortal();
-        userInput.Player.SpawnSecondPortal.performed += context => SpawnSecondPortal();
+        userInput.Player.SpawnFirstPortal.started += context => SpawnFirstPortal(context);
+        userInput.Player.SpawnSecondPortal.started += context => SpawnSecondPortal(context);
         userInput.Player.Jump.performed += context => Jump();
+        // COMPONENTS INIT
         rig = GetComponent<Rigidbody>();
         portals = new Portal[2] 
         {
@@ -109,19 +118,10 @@ public class Player : MonoBehaviour
 
     private void Move()
     {
-        //Matrix4x4 mat4 = Matrix4x4.identity;
         Quaternion forwardDirection = mainCamera.transform.rotation;
         forwardDirection = Quaternion.Euler(0.0f, forwardDirection.eulerAngles.y, 0.0f);
-        //mat4.SetTRS(new Vector3(1.0f, 1.0f, 1.0f), forwardDirection, new Vector3(1.0f, 1.0f, 1.0f));
-        //Vector3 inputVector = new Vector3(
-        //    Input.GetAxis(HORIZONTAL_AXIS_NAME), 
-        //    0, 
-        //    Input.GetAxis(VERTICAL_AXIS_NAME));
-        //inputVector = mat4.MultiplyVector(inputVector.normalized);
         inputVector = forwardDirection * inputVector;
         rig.MovePosition(transform.position + inputVector * playerSpeed * Time.fixedDeltaTime);
-        //rig.AddForce(inputVector * playerSpeed, ForceMode.VelocityChange);
-        //rig.velocity = new Vector3(inputVector.x * playerSpeed, rig.velocity.y, inputVector.z * playerSpeed);
     }
 
     private void CameraProceed()
@@ -218,6 +218,7 @@ public class Player : MonoBehaviour
         Quaternion portalRotation = Quaternion.LookRotation(normal, Vector3.up);
         Vector3 offsetToPlayer = (transform.position - hitPoint).normalized * 0.01f;
         spawnedPortal = Instantiate<Portal>(portalPrefab, hitPoint + offsetToPlayer, portalRotation) as Portal;
+        spawnedPortal.gameObject.name = Random.Range(0, 100).ToString();
         spawnedPortal.SetWallCollider(wallCollider);
     }
 
@@ -233,7 +234,8 @@ public class Player : MonoBehaviour
     private void GetSpawnPosition(Vector3 hitPoint, Vector3 normal, float offset, out Vector3 pos, out Quaternion rot)
     {
         rot = Quaternion.LookRotation(normal, Vector3.up);
-        Vector3 offsetToPlayer = (transform.position - hitPoint).normalized * offset;
+        //Vector3 offsetToPlayer = (transform.position - hitPoint).normalized * offset;
+        Vector3 offsetToPlayer = normal * offset;
         pos = hitPoint + offsetToPlayer;
     }
 
@@ -292,7 +294,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void SpawnFirstPortal()
+    private void SpawnFirstPortal(InputAction.CallbackContext context)
     {
         if (hitHappened && currentHit.collider.CompareTag("LevelMesh")) 
         {
@@ -300,7 +302,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void SpawnSecondPortal()
+    private void SpawnSecondPortal(InputAction.CallbackContext context)
     {
         if (hitHappened && currentHit.collider.CompareTag("LevelMesh")) 
         {
@@ -313,6 +315,58 @@ public class Player : MonoBehaviour
         if (CanJump) 
         {
             rig.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
+    }
+
+    private void ReadConfig()
+    {
+        try 
+        {
+            using(StreamReader sr = new StreamReader("config.cfg"))
+            {
+                string line;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    string[] parts = line.Split();
+                    switch (parts[0]) 
+                    {
+                        case "mouse_sensetivity":
+                            int value = int.Parse(parts[1]);
+                            if (value <= 0) 
+                            {
+                                Debug.LogError("Mouse sensetivity value must be more then zero.");
+                            }
+                            else 
+                            {
+                                mouseSensetivityX = value;
+                                mouseSensetivityY = value;
+                            }
+                            break;
+                        case "recursive_iterations":
+                            int val = int.Parse(parts[1]);
+                            if (val <= 0) 
+                            {
+                                Debug.LogError("Recursive iterations count must be more then zero.");
+                            }
+                            else 
+                            {
+                                rec_iter = val;
+                            }
+                            break;
+                        default:
+                            Debug.LogWarning("No such param in list.");
+                            break;
+                    }
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            Debug.LogError("CONFIG ERROR: " + e.Message);
+        }
+        catch (System.Exception e) 
+        {
+            Debug.LogError(e.Message);
         }
     }
 }

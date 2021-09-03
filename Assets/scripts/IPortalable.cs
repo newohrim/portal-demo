@@ -9,4 +9,6 @@ public interface IPortalable
     void ExitPortal(Collider wallCollider);
     void WarpToPortal();
     bool IsInPortal(Portal portal);
+    bool IsBehindPortal(Portal portal);
+    void SwapPortals();
 }
